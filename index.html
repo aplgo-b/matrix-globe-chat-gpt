@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Matrix Globe</title>
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+      background-color: #000;
+    }
+    #binaryCanvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      z-index: 1;
+    }
+    #threeJsCanvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      z-index: 2;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="binaryCanvas"></canvas>
+  <canvas id="threeJsCanvas"></canvas>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script>
+    // Constants for binary code animation
+    const charSize = 20; // Size of each character
+    const charSpeed = 2; // Speed of falling characters
+    const fadeFactor = 0.1; // Increased fade factor for more pronounced fading effect
+
+    let binaryCanvas, ctx;
+    let binaryCode = [];
+    let numColumns;
+
+    function initBinaryCanvas() {
+      binaryCanvas = document.getElementById('binaryCanvas');
+      ctx = binaryCanvas.getContext('2d');
+      resizeBinaryCanvas();
+
+      numColumns = Math.floor(binaryCanvas.width / charSize);
+
+      for (let i = 0; i < numColumns; i++) {
+        binaryCode.push({
+          x: i * charSize,
+          y: Math.random() * binaryCanvas.height,
+          value: Math.random() > 0.5 ? '0' : '1',
+          trails: []
+        });
+      }
+
+      requestAnimationFrame(animateBinaryCode);
+    }
+
+    function animateBinaryCode() {
+      // Fade out effect
+      ctx.fillStyle = 'rgba(0, 0, 0, ' + fadeFactor + ')';
+      ctx.fillRect(0, 0, binaryCanvas.width, binaryCanvas.height);
+
+      ctx.fillStyle = '#00FF00';
+      ctx.font = `${charSize}px monospace`;
+      for (let i = 0; i < binaryCode.length; i++) {
+        binaryCode[i].y += charSpeed;
+        if (binaryCode[i].y > binaryCanvas.height) {
+          binaryCode[i].y = -charSize;
+          binaryCode[i].value = Math.random() > 0.5 ? '0' : '1';
+        }
+
+        // Only create trails occasionally to reduce frequency
+        if (Math.random() > 0.8) {
+          binaryCode[i].trails.push({ y: binaryCode[i].y, value: binaryCode[i].value });
+        }
+
+        if (binaryCode[i].trails.length > 20) {
+          binaryCode[i].trails.shift();
+        }
+
+        for (let j = 0; j < binaryCode[i].trails.length; j++) {
+          let opacity = 1 - (j / binaryCode[i].trails.length);
+          ctx.fillStyle = `rgba(0, 255, 0, ${opacity})`;
+          ctx.fillText(binaryCode[i].trails[j].value, binaryCode[i].x, binaryCode[i].trails[j].y);
+        }
+      }
+
+      requestAnimationFrame(animateBinaryCode);
+    }
+
+    function resizeBinaryCanvas() {
+      binaryCanvas.width = window.innerWidth;
+      binaryCanvas.height = window.innerHeight;
+      numColumns = Math.floor(binaryCanvas.width / charSize);
+      binaryCode = [];
+      for (let i = 0; i < numColumns; i++) {
+        binaryCode.push({
+          x: i * charSize,
+          y: Math.random() * binaryCanvas.height,
+          value: Math.random() > 0.5 ? '0' : '1',
+          trails: []
+        });
+      }
+    }
+
+    // Three.js Globe
+    let scene, camera, renderer, globe;
+
+    function initThreeJs() {
+      scene = new THREE.Scene();
+      camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+      renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('threeJsCanvas'), alpha: true });
+      renderer.setSize(window.innerWidth, window.innerHeight);
+
+      const geometry = new THREE.SphereGeometry(1, 32, 32);
+      const loader = new THREE.TextureLoader();
+      loader.load('https://upload.wikimedia.org/wikipedia/commons/thumb/9/97/The_Earth_seen_from_Apollo_17.jpg/1024px-The_Earth_seen_from_Apollo_17.jpg', function (texture) {
+        const material = new THREE.MeshBasicMaterial({ map: texture });
+        globe = new THREE.Mesh(geometry, material);
+        scene.add(globe);
+        animateGlobe();
+      });
+
+      camera.position.z = 3;
+
+      window.addEventListener('resize', onWindowResize, false);
+    }
+
+    function animateGlobe() {
+      requestAnimationFrame(animateGlobe);
+      globe.rotation.y += 0.005;
+      renderer.render(scene, camera);
+    }
+
+    function onWindowResize() {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      resizeBinaryCanvas(); // Ensure binary canvas resizes as well
+    }
+
+    // Initialize both
+    window.onload = function() {
+      initBinaryCanvas();
+      initThreeJs();
+    };
+  </script>
+</body>
+</html>
